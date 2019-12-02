@@ -1,0 +1,49 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Daniel DeWaters"
+date: "12/2/2019"
+output: html_document
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(caret)
+library(corrplot)
+```
+
+# Synopsis
+
+The purpose of this assignment is to create a model that predicts when a person is performing an exercise correctly or incorrectly. This model will be trained from the weight lifting data set:
+
+http://groupware.les.inf.puc-rio.br/har
+
+
+# Getting the Data
+```{r getData}
+train_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+train_file_name <- "./data/pml-training.csv"
+test_file_name <- "./data/pml-testing.csv"
+
+if(!file.exists(train_file_name) | !file.exists(test_file_name)){
+  download.file(train_url, destfile=train_file_name, method="curl")
+  download.file(test_url, destfile=test_file_name, method="curl")
+}
+
+train <- read.csv(train_file_name, na.string=c("NA", "#DIV/0!"))
+test <- read.csv(test_file_name, na.string=c("NA", "#DIV/0!"))
+```
+
+# Cleaning the Data
+
+First we should remove columns from the data set that are mostly NAs or have near zero variance. The training dataset has a total of `r sum(is.na(train))` missing values.
+```{r cleanData}
+mean_nas <- function(x){mean(!is.na(x)) > 0.95}
+
+good_mean_nas <- sapply(train, mean_nas)
+bad_var <- nearZeroVar(train)
+
+#train <- train[, good_cols]
+```
