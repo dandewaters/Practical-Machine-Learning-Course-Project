@@ -18,32 +18,93 @@ The purpose of this assignment is to create a model that predicts when a person 
 
 http://groupware.les.inf.puc-rio.br/har
 
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
 
 # Getting the Data
 ```{r getData}
-train_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
-test_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+sample_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+quiz_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 
-train_file_name <- "./data/pml-training.csv"
-test_file_name <- "./data/pml-testing.csv"
+sample_file_name <- "./data/pml-training.csv"
+quiz_file_name <- "./data/pml-testing.csv"
 
-if(!file.exists(train_file_name) | !file.exists(test_file_name)){
-  download.file(train_url, destfile=train_file_name, method="curl")
-  download.file(test_url, destfile=test_file_name, method="curl")
+if(!file.exists(sample_file_name) | !file.exists(quiz_file_name)){
+  download.file(sample_url, destfile=training_file_name, method="curl")
+  download.file(quiz_url, destfile=testing_file_name, method="curl")
 }
 
-train <- read.csv(train_file_name, na.string=c("NA", "#DIV/0!"))
-test <- read.csv(test_file_name, na.string=c("NA", "#DIV/0!"))
+sample_data <- read.csv(sample_file_name, na.string=c("NA", "#DIV/0!"))
+quiz_data <- read.csv(quiz_file_name, na.string=c("NA", "#DIV/0!"))
 ```
 
 # Cleaning the Data
 
-First we should remove columns from the data set that are mostly NAs or have near zero variance. The training dataset has a total of `r sum(is.na(train))` missing values.
+Our training set is `r dim(sample_data)[2]` columns by `r dim(sample_data)[1]` rows. Let's see if we can reduce the size a bit to make things easier on ourselves. First we should remove columns from the data set that are mostly NAs or have near zero variance. The training dataset has a total of `r sum(is.na(sample_data))` missing values.
 ```{r cleanData}
-mean_nas <- function(x){mean(!is.na(x)) > 0.95}
+# Remove columns that have greater than 5% missing values 
+mean_not_nas <- function(x){mean(!is.na(x)) > 0.95}
+good_mean_nas <- sapply(sample_data, mean_not_nas)
+sample_data <- sample_data[, good_mean_nas]
 
-good_mean_nas <- sapply(train, mean_nas)
-bad_var <- nearZeroVar(train)
+# Remove columns with low variance
+bad_var <- nearZeroVar(sample_data)
+sample_data <- sample_data[, -bad_var]
 
-#train <- train[, good_cols]
+sum_nas <- sum(!is.na(sample_data))
 ```
+
+Our sample set is now `r dim(sample_data)[2]` columns by `r dim(sample_data)[1]` rows. It has `r sum_nas` missing values. Now we can break up the sample set into a training and testing set.
+
+# Creating a training and testing set
+
+In order to test our model's accuracy before we take the quiz, we have to make a training and test set.
+```{r createDataPart}
+# choose which indeces will be put in training set
+inTrain <- createDataPartition(y=sample_data$classe, p=0.7, list=FALSE)
+
+# Separate sample set into training and testing data frames
+training <- sample_data[inTrain,]
+testing <- sample_data[-inTrain,]
+```
+
+# Building A Model
+
+## Random Forest
+
+I chose to build a random forest because it is one of the most popular and accurate prediction models for a classification problem.
+
+
+```{r build_RF_model, cache=TRUE}
+set.seed(1234)
+
+rf_cont <- trainControl(method="cv", number=3, verboseIter=F)
+rf_fit <- train(classe~., data=training, method="rf", trControl=rf_cont)
+rf_fit$finalModel
+```
+
+### In Sample Error
+
+Let's check the accuracy of the model using the data that it was trained with.
+```{r inSampleError}
+rf_train_pred <- predict(rf_fit, training)
+rf_train_accuracy <- confusionMatrix(training$classe, rf_train_pred)$overall[1]
+rf_train_accuracy
+```
+
+Our accuracy with the training data is 100%. The random forest model has no in sample error.
+
+### Out of Sample Error
+
+Now we can check the accuracy of the model using new data. 
+
+```{r outOfSampleError}
+rf_test_pred <- predict(rf_fit, testing)
+rf_test_accuracy <- confusionMatrix(testing$classe, rf_test_pred)$overall[1]
+rf_test_accuracy
+```
+
+With the testing data, our model accuracy is `r round(100*rf_test_accuracy, digits=2)`%, so our model has `r 1-round(100*rf_test_accuracy, digits=2)`% out of sample error.
+
+
+

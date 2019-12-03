@@ -378,27 +378,97 @@ library(caret)</code></pre>
 <pre><code>## corrplot 0.84 loaded</code></pre>
 <div id="synopsis" class="section level1">
 <h1>Synopsis</h1>
-<p>The purpose of this assignment is to create a model that predicts when a person is performing an exercise correctly or incorrectly. This model will be trained from the weight lifting data set <a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a></p>
+<p>The purpose of this assignment is to create a model that predicts when a person is performing an exercise correctly or incorrectly. This model will be trained from the weight lifting data set:</p>
+<p><a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a></p>
+<p>Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human ’13) . Stuttgart, Germany: ACM SIGCHI, 2013.</p>
 </div>
 <div id="getting-the-data" class="section level1">
 <h1>Getting the Data</h1>
-<pre class="r"><code>train_url &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
-test_url &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;
+<pre class="r"><code>sample_url &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
+quiz_url &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;
 
-train_file_name &lt;- &quot;./data/pml-training.csv&quot;
-test_file_name &lt;- &quot;./data/pml-testing.csv&quot;
+sample_file_name &lt;- &quot;./data/pml-training.csv&quot;
+quiz_file_name &lt;- &quot;./data/pml-testing.csv&quot;
 
-if(!file.exists(train_file_name) | !file.exists(test_file_name)){
-  download.file(train_url, destfile=train_file_name, method=&quot;curl&quot;)
-  download.file(test_url, destfile=test_file_name, method=&quot;curl&quot;)
+if(!file.exists(sample_file_name) | !file.exists(quiz_file_name)){
+  download.file(sample_url, destfile=training_file_name, method=&quot;curl&quot;)
+  download.file(quiz_url, destfile=testing_file_name, method=&quot;curl&quot;)
 }
 
-train &lt;- read.csv(train_file_name, na.string=c(&quot;NA&quot;, &quot;#DIV/0!&quot;))
-test &lt;- read.csv(test_file_name, na.string=c(&quot;NA&quot;, &quot;#DIV/0!&quot;))</code></pre>
+sample_data &lt;- read.csv(sample_file_name, na.string=c(&quot;NA&quot;, &quot;#DIV/0!&quot;))
+quiz_data &lt;- read.csv(quiz_file_name, na.string=c(&quot;NA&quot;, &quot;#DIV/0!&quot;))</code></pre>
 </div>
 <div id="cleaning-the-data" class="section level1">
 <h1>Cleaning the Data</h1>
-<p>First we should remove columns from the data set that are mostly NAs or have near zero variance. The training dataset has at total of 1925102 missing values.</p>
+<p>Our training set is 160 columns by 19622 rows. Let’s see if we can reduce the size a bit to make things easier on ourselves. First we should remove columns from the data set that are mostly NAs or have near zero variance. The training dataset has a total of 1925102 missing values.</p>
+<pre class="r"><code># Remove columns that have greater than 5% missing values 
+mean_not_nas &lt;- function(x){mean(!is.na(x)) &gt; 0.95}
+good_mean_nas &lt;- sapply(sample_data, mean_not_nas)
+sample_data &lt;- sample_data[, good_mean_nas]
+
+# Remove columns with low variance
+bad_var &lt;- nearZeroVar(sample_data)
+sample_data &lt;- sample_data[, -bad_var]
+
+sum_nas &lt;- sum(!is.na(sample_data))</code></pre>
+<p>Our sample set is now 59 columns by 19622 rows. It has 1157698 missing values. Now we can break up the sample set into a training and testing set.</p>
+</div>
+<div id="creating-a-training-and-testing-set" class="section level1">
+<h1>Creating a training and testing set</h1>
+<p>In order to test our model’s accuracy before we take the quiz, we have to make a training and test set.</p>
+<pre class="r"><code># choose which indeces will be put in training set
+inTrain &lt;- createDataPartition(y=sample_data$classe, p=0.7, list=FALSE)
+
+# Separate sample set into training and testing data frames
+training &lt;- sample_data[inTrain,]
+testing &lt;- sample_data[-inTrain,]</code></pre>
+</div>
+<div id="building-a-model" class="section level1">
+<h1>Building A Model</h1>
+<div id="random-forest" class="section level2">
+<h2>Random Forest</h2>
+<p>I chose to build a random forest because it is one of the most popular and accurate prediction models for a classification problem.</p>
+<pre class="r"><code>set.seed(1234)
+
+rf_cont &lt;- trainControl(method=&quot;cv&quot;, number=3, verboseIter=F)
+rf_fit &lt;- train(classe~., data=training, method=&quot;rf&quot;, trControl=rf_cont)
+rf_fit$finalModel</code></pre>
+<pre><code>## 
+## Call:
+##  randomForest(x = x, y = y, mtry = param$mtry) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 41
+## 
+##         OOB estimate of  error rate: 0%
+## Confusion matrix:
+##      A    B    C    D    E class.error
+## A 3906    0    0    0    0           0
+## B    0 2658    0    0    0           0
+## C    0    0 2396    0    0           0
+## D    0    0    0 2252    0           0
+## E    0    0    0    0 2525           0</code></pre>
+<div id="in-sample-error" class="section level3">
+<h3>In Sample Error</h3>
+<p>Let’s check the accuracy of the model using the data that it was trained with.</p>
+<pre class="r"><code>rf_train_pred &lt;- predict(rf_fit, training)
+rf_train_accuracy &lt;- confusionMatrix(training$classe, rf_train_pred)$overall[1]
+rf_train_accuracy</code></pre>
+<pre><code>## Accuracy 
+##        1</code></pre>
+<p>Our accuracy with the training data is 100%. The random forest model has no in sample error.</p>
+</div>
+<div id="out-of-sample-error" class="section level3">
+<h3>Out of Sample Error</h3>
+<p>Now we can check the accuracy of the model using new data.</p>
+<pre class="r"><code>rf_test_pred &lt;- predict(rf_fit, testing)
+rf_test_accuracy &lt;- confusionMatrix(testing$classe, rf_test_pred)$overall[1]
+rf_test_accuracy</code></pre>
+<pre><code>##  Accuracy 
+## 0.9996602</code></pre>
+<p>With the testing data, our model accuracy is 99.97%, so our model has -98.97% out of sample error.</p>
+</div>
+</div>
 </div>
 
 
