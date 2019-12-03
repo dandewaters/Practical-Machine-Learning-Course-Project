@@ -86,7 +86,7 @@ rf_fit$finalModel
 ### In Sample Error
 
 Let's check the accuracy of the model using the data that it was trained with.
-```{r inSampleError}
+```{r rf_inSampleError}
 rf_train_pred <- predict(rf_fit, training)
 rf_train_accuracy <- confusionMatrix(training$classe, rf_train_pred)$overall[1]
 rf_train_accuracy
@@ -98,7 +98,7 @@ Our accuracy with the training data is 100%. The random forest model has no in s
 
 Now we can check the accuracy of the model using new data. 
 
-```{r outOfSampleError}
+```{r rf_outOfSampleError}
 rf_test_pred <- predict(rf_fit, testing)
 rf_test_accuracy <- confusionMatrix(testing$classe, rf_test_pred)$overall[1]
 rf_test_accuracy
@@ -106,5 +106,10 @@ rf_test_accuracy
 
 With the testing data, our model accuracy is `r round(100*rf_test_accuracy, digits=2)`%, so our model has `r 1-round(100*rf_test_accuracy, digits=2)`% out of sample error.
 
+## Boosting
+```{r buildBoostingModel, cache=TRUE}
+gb_cont <- trainControl(method="repeatedcv", number=3, verboseIter=F)
+gb_fit <- train(classe~., data=training, method="gbm", trControl=gb_cont, verbose=F)
 
 
+```
