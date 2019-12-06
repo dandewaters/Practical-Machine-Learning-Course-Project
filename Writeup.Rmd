@@ -42,14 +42,20 @@ quiz_data <- read.csv(quiz_file_name, na.string=c("NA", "#DIV/0!"))
 
 Our training set is `r dim(sample_data)[2]` columns by `r dim(sample_data)[1]` rows. Let's see if we can reduce the size a bit to make things easier on ourselves. First we should remove columns from the data set that are mostly NAs or have near zero variance. The training dataset has a total of `r sum(is.na(sample_data))` missing values.
 ```{r cleanData}
+# Remove columns that are irrelevant to prediction (names, timestamps, row IDs)
+sample_data <- sample_data[,-c(1:7)]
+quiz_data <- quiz_data[,-c(1:7)]
 # Remove columns that have greater than 5% missing values 
 mean_not_nas <- function(x){mean(!is.na(x)) > 0.95}
 good_mean_nas <- sapply(sample_data, mean_not_nas)
 sample_data <- sample_data[, good_mean_nas]
+quiz_data <- quiz_data[, good_mean_nas]
+```
 
+```{r next}
 # Remove columns with low variance
-bad_var <- nearZeroVar(sample_data)
-sample_data <- sample_data[, -bad_var]
+#bad_var <- nearZeroVar(sample_data)
+#sample_data <- sample_data[, -bad_var]
 
 sum_nas <- sum(!is.na(sample_data))
 ```
@@ -60,6 +66,7 @@ Our sample set is now `r dim(sample_data)[2]` columns by `r dim(sample_data)[1]`
 
 In order to test our model's accuracy before we take the quiz, we have to make a training and test set.
 ```{r createDataPart}
+set.seed(4321)
 # choose which indeces will be put in training set
 inTrain <- createDataPartition(y=sample_data$classe, p=0.7, list=FALSE)
 
@@ -68,18 +75,14 @@ training <- sample_data[inTrain,]
 testing <- sample_data[-inTrain,]
 ```
 
-# Building A Model
+# Building Models
+
+I chose to build a random forest and a general boosting model because they are some of the most popular and accurate prediction models for a classification problem.
 
 ## Random Forest
-
-I chose to build a random forest because it is one of the most popular and accurate prediction models for a classification problem.
-
-
 ```{r build_RF_model, cache=TRUE}
-set.seed(1234)
-
-rf_cont <- trainControl(method="cv", number=3, verboseIter=F)
-rf_fit <- train(classe~., data=training, method="rf", trControl=rf_cont)
+rf_cont <- trainControl(method="cv", number=3, verboseIter=FALSE)
+rf_fit <- train(classe~., data=training, method="rf", trControl=rf_cont, verbose=FALSE)
 rf_fit$finalModel
 ```
 
@@ -88,7 +91,7 @@ rf_fit$finalModel
 Let's check the accuracy of the model using the data that it was trained with.
 ```{r rf_inSampleError}
 rf_train_pred <- predict(rf_fit, training)
-rf_train_accuracy <- confusionMatrix(training$classe, rf_train_pred)$overall[1]
+rf_train_accuracy <- confusionMatrix(training$classe, rf_train_pred)#$overall[1]
 rf_train_accuracy
 ```
 
@@ -108,8 +111,51 @@ With the testing data, our model accuracy is `r round(100*rf_test_accuracy, digi
 
 ## Boosting
 ```{r buildBoostingModel, cache=TRUE}
-gb_cont <- trainControl(method="repeatedcv", number=3, verboseIter=F)
-gb_fit <- train(classe~., data=training, method="gbm", trControl=gb_cont, verbose=F)
+gb_cont <- trainControl(method="repeatedcv", number=3, verboseIter=FALSE)
+gb_fit <- train(classe~., data=training, method="gbm", trControl=gb_cont, verbose=FALSE)
+gb_fit$finalModel
+```
+
+### In Sample Error
+
+Let's check the accuracy of the model using the data that it was trained with.
+```{r gb_inSampleError}
+gb_train_pred <- predict(gb_fit, training)
+gb_train_accuracy <- confusionMatrix(training$classe, gb_train_pred)$overall[1]
+gb_train_accuracy
+```
 
 
+
+### Out of Sample Error
+
+Now we can check the accuracy of the model using new data. 
+
+```{r gb_outOfSampleError}
+gb_test_pred <- predict(gb_fit, testing)
+gb_test_accuracy <- confusionMatrix(testing$classe, gb_test_pred)$overall[1]
+gb_test_accuracy
+```
+
+|      Model     |    In Sample Error    | Out of Sample Error  |
+|----------------|-----------------------|----------------------|
+| Random Forest  |`r 1-rf_train_accuracy`|`r 1-rf_test_accuracy`|
+|    Boosting    |`r 1-gb_train_accuracy`|`r 1-gb_test_accuracy`|
+
+I chose to use the random forest model to predict the quiz answers because it has a smaller out of sample error.
+
+```{r quiz}
+# Find quiz answers
+quiz_answers <- predict(rf_fit, quiz_data)
+quiz_answers
+```
+
+```{r test}
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(corrplot)
+modFitDecTree <- rpart(classe ~ ., data=training, method="class")
+fancyRpartPlot(modFitDecTree)
 ```

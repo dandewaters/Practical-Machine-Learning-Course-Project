@@ -430,24 +430,24 @@ testing &lt;- sample_data[-inTrain,]</code></pre>
 <p>I chose to build a random forest because it is one of the most popular and accurate prediction models for a classification problem.</p>
 <pre class="r"><code>set.seed(1234)
 
-rf_cont &lt;- trainControl(method=&quot;cv&quot;, number=3, verboseIter=F)
-rf_fit &lt;- train(classe~., data=training, method=&quot;rf&quot;, trControl=rf_cont)
+rf_cont &lt;- trainControl(method=&quot;cv&quot;, number=3, verboseIter=FALSE)
+rf_fit &lt;- train(classe~., data=training, method=&quot;rf&quot;, trControl=rf_cont, verbose=FALSE)
 rf_fit$finalModel</code></pre>
 <pre><code>## 
 ## Call:
-##  randomForest(x = x, y = y, mtry = param$mtry) 
+##  randomForest(x = x, y = y, mtry = param$mtry, verbose = FALSE) 
 ##                Type of random forest: classification
 ##                      Number of trees: 500
 ## No. of variables tried at each split: 41
 ## 
-##         OOB estimate of  error rate: 0%
+##         OOB estimate of  error rate: 0.01%
 ## Confusion matrix:
-##      A    B    C    D    E class.error
-## A 3906    0    0    0    0           0
-## B    0 2658    0    0    0           0
-## C    0    0 2396    0    0           0
-## D    0    0    0 2252    0           0
-## E    0    0    0    0 2525           0</code></pre>
+##      A    B    C    D    E  class.error
+## A 3906    0    0    0    0 0.0000000000
+## B    0 2658    0    0    0 0.0000000000
+## C    0    0 2396    0    0 0.0000000000
+## D    0    0    0 2251    1 0.0004440497
+## E    0    0    0    0 2525 0.0000000000</code></pre>
 <div id="in-sample-error" class="section level3">
 <h3>In Sample Error</h3>
 <p>Let’s check the accuracy of the model using the data that it was trained with.</p>
@@ -465,8 +465,36 @@ rf_train_accuracy</code></pre>
 rf_test_accuracy &lt;- confusionMatrix(testing$classe, rf_test_pred)$overall[1]
 rf_test_accuracy</code></pre>
 <pre><code>##  Accuracy 
-## 0.9996602</code></pre>
-<p>With the testing data, our model accuracy is 99.97%, so our model has -98.97% out of sample error.</p>
+## 0.9998301</code></pre>
+<p>With the testing data, our model accuracy is 99.98%, so our model has -98.98% out of sample error.</p>
+</div>
+</div>
+<div id="boosting" class="section level2">
+<h2>Boosting</h2>
+<pre class="r"><code>gb_cont &lt;- trainControl(method=&quot;repeatedcv&quot;, number=3, verboseIter=FALSE)
+gb_fit &lt;- train(classe~., data=training, method=&quot;gbm&quot;, trControl=gb_cont, verbose=FALSE)
+gb_fit$finalModel</code></pre>
+<pre><code>## A gradient boosted model with multinomial loss function.
+## 50 iterations were performed.
+## There were 80 predictors of which 1 had non-zero influence.</code></pre>
+<div id="in-sample-error-1" class="section level3">
+<h3>In Sample Error</h3>
+<p>Let’s check the accuracy of the model using the data that it was trained with.</p>
+<pre class="r"><code>gb_train_pred &lt;- predict(gb_fit, training)
+gb_train_accuracy &lt;- confusionMatrix(training$classe, gb_train_pred)$overall[1]
+gb_train_accuracy</code></pre>
+<pre><code>## Accuracy 
+##        1</code></pre>
+<p>Our accuracy with the training data is 100%. The random forest model has no in sample error.</p>
+</div>
+<div id="out-of-sample-error-1" class="section level3">
+<h3>Out of Sample Error</h3>
+<p>Now we can check the accuracy of the model using new data.</p>
+<pre class="r"><code>gb_test_pred &lt;- predict(gb_fit, testing)
+gb_test_accuracy &lt;- confusionMatrix(testing$classe, gb_test_pred)$overall[1]
+gb_test_accuracy</code></pre>
+<pre><code>##  Accuracy 
+## 0.9994902</code></pre>
 </div>
 </div>
 </div>
