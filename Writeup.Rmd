@@ -176,7 +176,7 @@ With the testing data, this model accuracy is `r round(100*gb_test_accuracy, dig
 
 I chose to use the random forest model to predict the quiz answers because it has a smaller out of sample error.
 
-```{r quiz, echo=FALSE, include=FALSE}
+```{r quiz}
 # Find quiz answers
 quiz_answers <- predict(rf_fit, quiz_data)
 quiz_answers
@@ -185,3 +185,5 @@ quiz_answers
 # References
 
 Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+https://www.coursera.org/learn/practical-machine-learning/peer/R43St/prediction-assignment-writeup/review/5pyI3RqcEeqaogrh_tkcKw

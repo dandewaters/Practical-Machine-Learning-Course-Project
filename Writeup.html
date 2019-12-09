@@ -1689,10 +1689,16 @@ gb_test_accuracy</code></pre>
 </tbody>
 </table>
 <p>I chose to use the random forest model to predict the quiz answers because it has a smaller out of sample error.</p>
+<pre class="r"><code># Find quiz answers
+quiz_answers &lt;- predict(rf_fit, quiz_data)
+quiz_answers</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
 <p>Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human ’13) . Stuttgart, Germany: ACM SIGCHI, 2013.</p>
+<p><a href="https://www.coursera.org/learn/practical-machine-learning/peer/R43St/prediction-assignment-writeup/review/5pyI3RqcEeqaogrh_tkcKw" class="uri">https://www.coursera.org/learn/practical-machine-learning/peer/R43St/prediction-assignment-writeup/review/5pyI3RqcEeqaogrh_tkcKw</a></p>
 </div>
 
 
