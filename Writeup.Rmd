@@ -9,22 +9,22 @@ output:
     toc_float: true
 ---
 
-```{r setup}
+```{r setup, results="hide", warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(knitr)
 library(caret)
 library(corrplot)
-
 ```
 
 # Synopsis
 
-The purpose of this assignment is to create a model that predicts when a person is performing an exercise correctly or incorrectly. This model will be trained from the weight lifting data set:
+This report is a writeup for the final project of the practical machine learning course in the Data Science Specialization provided by Johns Hopkins University's on Coursera. The purpose of this assignment is to create a model that will assess an individiual's performance of an exercise. This model will be trained from the weight lifting data set:
 
 http://groupware.les.inf.puc-rio.br/har
 
 
 # Getting the Data
+
 ```{r getData}
 sample_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 quiz_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
@@ -45,24 +45,25 @@ quiz_data <- read.csv(quiz_file_name, na.string=c("NA", "#DIV/0!"))
 
 # Cleaning the Data
 
-Our training set is `r dim(sample_data)[2]` columns by `r dim(sample_data)[1]` rows. Let's see if we can reduce the size a bit to make things easier on ourselves. First we should remove columns from the data set that are irrelevant to training a model (names, timestanps, IDs) and then remove columns that are mostly NAs or have near zero variance. The training dataset has a total of `r sum(is.na(sample_data))` missing values.
+The dimensions of our sample data set are `r dim(sample_data)[2]` columns by `r dim(sample_data)[1]` rows. Let's see if we can reduce the size a bit to make things easier on ourselves. First we should remove columns from the data set that are irrelevant to training a model (names, timestamps, IDs) and then remove columns that are mostly NAs. The training dataset has a total of `r sum(is.na(sample_data))` missing values.
 
 ```{r cleanData}
 # Remove columns that are irrelevant to prediction (names, timestamps, row IDs)
 sample_data <- sample_data[,-c(1:7)]
 quiz_data <- quiz_data[,-c(1:7)]
+
 # Remove columns that have greater than 5% missing values 
 mean_not_nas <- function(x){mean(!is.na(x)) > 0.95}
 good_mean_nas <- sapply(sample_data, mean_not_nas)
 sample_data <- sample_data[, good_mean_nas]
 quiz_data <- quiz_data[, good_mean_nas]
 
-sum_nas <- sum(!is.na(sample_data))
+sum_nas <- sum(is.na(sample_data))
 ```
 
-Our sample set is now `r dim(sample_data)[2]` columns by `r dim(sample_data)[1]` rows. It has `r sum_nas` missing values. Now we can break up the sample set into a training and testing set.
+The dimensions are now `r dim(sample_data)[2]` columns by `r dim(sample_data)[1]` rows. There are `r sum_nas` missing values. Now we can break up the sample set into a training and testing set.
 
-# Creating A Training and Testing Set - (Cross Validation)
+# Cross Validation
 
 In order to test our model's accuracy before we take the quiz, we have to make a training and test set.
 
@@ -81,10 +82,15 @@ testing <- sample_data[-inTrain,]
 
 I chose to build a random forest and a general boosting model because they are some of the most popular and accurate prediction models for a classification problem.
 
-## Random Forest
+## Random Forest Model
+
 ```{r build_RF_model, cache=TRUE}
+# Train model
 rf_cont <- trainControl(method="cv", number=3, verboseIter=FALSE)
-rf_fit <- train(classe~., data=training, method="rf", trControl=rf_cont, verbose=FALSE)
+rf_fit <- train(classe~., data=training, method="rf",
+                trControl=rf_cont, verbose=FALSE)
+
+# Display final model
 rf_fit$finalModel
 ```
 
@@ -93,7 +99,10 @@ rf_fit$finalModel
 Let's check the accuracy of the model using the data that it was trained with.
 
 ```{r rf_inSampleError}
+# Run predictions on training data set
 rf_train_pred <- predict(rf_fit, training)
+
+# Assess accuracy of predictions
 rf_train_accuracy <- confusionMatrix(training$classe, rf_train_pred)$overall[1]
 rf_train_accuracy
 ```
@@ -105,17 +114,25 @@ Our accuracy with the training data is `r round(100*rf_train_accuracy, digits=2)
 Now we can check the accuracy of the model using new data. 
 
 ```{r rf_outOfSampleError}
+# Run predictions on testing data set
 rf_test_pred <- predict(rf_fit, testing)
+
+# Assess accuracy of predictions
 rf_test_accuracy <- confusionMatrix(testing$classe, rf_test_pred)$overall[1]
 rf_test_accuracy
 ```
 
 With the testing data, our model accuracy is `r round(100*rf_test_accuracy, digits=2)`%, so our model has `r 100-round(100*rf_test_accuracy, digits=2)`% out of sample error.
 
-## Boosting
+## Generalized Boosted Model
+
 ```{r buildBoostingModel, cache=TRUE}
+# Train model
 gb_cont <- trainControl(method="repeatedcv", number=3, verboseIter=FALSE)
-gb_fit <- train(classe~., data=training, method="gbm", trControl=gb_cont, verbose=FALSE)
+gb_fit <- train(classe~., data=training, method="gbm",
+                trControl=gb_cont, verbose=FALSE)
+
+# Display final model
 gb_fit$finalModel
 ```
 
@@ -124,19 +141,25 @@ gb_fit$finalModel
 Let's check the accuracy of the model using the data that it was trained with.
 
 ```{r gb_inSampleError}
+# Run predictions on training dataest
 gb_train_pred <- predict(gb_fit, training)
+
+# Assess accuracy of predictions
 gb_train_accuracy <- confusionMatrix(training$classe, gb_train_pred)$overall[1]
 gb_train_accuracy
 ```
 
-Our accuracy with the training data is `r round(100*gb_train_accuracy, digits=2)`%, so this model has `r 100-round(100*gb_train_accuracy, digits=2)`%
+Our accuracy using the training data is `r round(100*gb_train_accuracy, digits=2)`%, so this model has `r 100-round(100*gb_train_accuracy, digits=2)`%
 
 ### Out of Sample Error
 
 Now we can check the accuracy of the model using new data. 
 
 ```{r gb_outOfSampleError}
+# Run predictions on testing data set
 gb_test_pred <- predict(gb_fit, testing)
+
+# Assess accuracy of predictions
 gb_test_accuracy <- confusionMatrix(testing$classe, gb_test_pred)$overall[1]
 gb_test_accuracy
 ```
@@ -150,9 +173,10 @@ With the testing data, this model accuracy is `r round(100*gb_test_accuracy, dig
 | Random Forest  |`r 1-rf_train_accuracy`|`r 1-rf_test_accuracy`|
 |    Boosting    |`r 1-gb_train_accuracy`|`r 1-gb_test_accuracy`|
 
+
 I chose to use the random forest model to predict the quiz answers because it has a smaller out of sample error.
 
-```{r quiz}
+```{r quiz, echo=FALSE, include=FALSE}
 # Find quiz answers
 quiz_answers <- predict(rf_fit, quiz_data)
 quiz_answers

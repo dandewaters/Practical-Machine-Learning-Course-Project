@@ -1518,14 +1518,11 @@ div.tocify {
 
 <pre class="r"><code>knitr::opts_chunk$set(echo = TRUE)
 library(knitr)
-library(caret)</code></pre>
-<pre><code>## Loading required package: lattice</code></pre>
-<pre><code>## Loading required package: ggplot2</code></pre>
-<pre class="r"><code>library(corrplot)</code></pre>
-<pre><code>## corrplot 0.84 loaded</code></pre>
+library(caret)
+library(corrplot)</code></pre>
 <div id="synopsis" class="section level1">
 <h1>Synopsis</h1>
-<p>The purpose of this assignment is to create a model that predicts when a person is performing an exercise correctly or incorrectly. This model will be trained from the weight lifting data set:</p>
+<p>This report is a writeup for the final project of the practical machine learning course in the Data Science Specialization provided by Johns Hopkins University’s on Coursera. The purpose of this assignment is to create a model that will assess an individiual’s performance of an exercise. This model will be trained from the weight lifting data set:</p>
 <p><a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a></p>
 </div>
 <div id="getting-the-data" class="section level1">
@@ -1548,21 +1545,22 @@ quiz_data &lt;- read.csv(quiz_file_name, na.string=c(&quot;NA&quot;, &quot;#DIV/
 </div>
 <div id="cleaning-the-data" class="section level1">
 <h1>Cleaning the Data</h1>
-<p>Our training set is 160 columns by 19622 rows. Let’s see if we can reduce the size a bit to make things easier on ourselves. First we should remove columns from the data set that are irrelevant to training a model (names, timestanps, IDs) and then remove columns that are mostly NAs or have near zero variance. The training dataset has a total of 1925102 missing values.</p>
+<p>The dimensions of our sample data set are 160 columns by 19622 rows. Let’s see if we can reduce the size a bit to make things easier on ourselves. First we should remove columns from the data set that are irrelevant to training a model (names, timestamps, IDs) and then remove columns that are mostly NAs. The training dataset has a total of 1925102 missing values.</p>
 <pre class="r"><code># Remove columns that are irrelevant to prediction (names, timestamps, row IDs)
 sample_data &lt;- sample_data[,-c(1:7)]
 quiz_data &lt;- quiz_data[,-c(1:7)]
+
 # Remove columns that have greater than 5% missing values 
 mean_not_nas &lt;- function(x){mean(!is.na(x)) &gt; 0.95}
 good_mean_nas &lt;- sapply(sample_data, mean_not_nas)
 sample_data &lt;- sample_data[, good_mean_nas]
 quiz_data &lt;- quiz_data[, good_mean_nas]
 
-sum_nas &lt;- sum(!is.na(sample_data))</code></pre>
-<p>Our sample set is now 53 columns by 19622 rows. It has 1039966 missing values. Now we can break up the sample set into a training and testing set.</p>
+sum_nas &lt;- sum(is.na(sample_data))</code></pre>
+<p>The dimensions are now 53 columns by 19622 rows. There are 0 missing values. Now we can break up the sample set into a training and testing set.</p>
 </div>
-<div id="creating-a-training-and-testing-set---cross-validation" class="section level1">
-<h1>Creating A Training and Testing Set - (Cross Validation)</h1>
+<div id="cross-validation" class="section level1">
+<h1>Cross Validation</h1>
 <p>In order to test our model’s accuracy before we take the quiz, we have to make a training and test set.</p>
 <pre class="r"><code>set.seed(4321)
 
@@ -1576,10 +1574,14 @@ testing &lt;- sample_data[-inTrain,]</code></pre>
 <div id="building-models" class="section level1">
 <h1>Building Models</h1>
 <p>I chose to build a random forest and a general boosting model because they are some of the most popular and accurate prediction models for a classification problem.</p>
-<div id="random-forest" class="section level2">
-<h2>Random Forest</h2>
-<pre class="r"><code>rf_cont &lt;- trainControl(method=&quot;cv&quot;, number=3, verboseIter=FALSE)
-rf_fit &lt;- train(classe~., data=training, method=&quot;rf&quot;, trControl=rf_cont, verbose=FALSE)
+<div id="random-forest-model" class="section level2">
+<h2>Random Forest Model</h2>
+<pre class="r"><code># Train model
+rf_cont &lt;- trainControl(method=&quot;cv&quot;, number=3, verboseIter=FALSE)
+rf_fit &lt;- train(classe~., data=training, method=&quot;rf&quot;,
+                trControl=rf_cont, verbose=FALSE)
+
+# Display final model
 rf_fit$finalModel</code></pre>
 <pre><code>## 
 ## Call:
@@ -1599,7 +1601,10 @@ rf_fit$finalModel</code></pre>
 <div id="in-sample-error" class="section level3">
 <h3>In Sample Error</h3>
 <p>Let’s check the accuracy of the model using the data that it was trained with.</p>
-<pre class="r"><code>rf_train_pred &lt;- predict(rf_fit, training)
+<pre class="r"><code># Run predictions on training data set
+rf_train_pred &lt;- predict(rf_fit, training)
+
+# Assess accuracy of predictions
 rf_train_accuracy &lt;- confusionMatrix(training$classe, rf_train_pred)$overall[1]
 rf_train_accuracy</code></pre>
 <pre><code>## Accuracy 
@@ -1609,18 +1614,25 @@ rf_train_accuracy</code></pre>
 <div id="out-of-sample-error" class="section level3">
 <h3>Out of Sample Error</h3>
 <p>Now we can check the accuracy of the model using new data.</p>
-<pre class="r"><code>rf_test_pred &lt;- predict(rf_fit, testing)
+<pre class="r"><code># Run predictions on testing data set
+rf_test_pred &lt;- predict(rf_fit, testing)
+
+# Assess accuracy of predictions
 rf_test_accuracy &lt;- confusionMatrix(testing$classe, rf_test_pred)$overall[1]
 rf_test_accuracy</code></pre>
 <pre><code>##  Accuracy 
-## 0.9942226</code></pre>
-<p>With the testing data, our model accuracy is 99.42%, so our model has 0.58% out of sample error.</p>
+## 0.9940527</code></pre>
+<p>With the testing data, our model accuracy is 99.41%, so our model has 0.59% out of sample error.</p>
 </div>
 </div>
-<div id="boosting" class="section level2">
-<h2>Boosting</h2>
-<pre class="r"><code>gb_cont &lt;- trainControl(method=&quot;repeatedcv&quot;, number=3, verboseIter=FALSE)
-gb_fit &lt;- train(classe~., data=training, method=&quot;gbm&quot;, trControl=gb_cont, verbose=FALSE)
+<div id="generalized-boosted-model" class="section level2">
+<h2>Generalized Boosted Model</h2>
+<pre class="r"><code># Train model
+gb_cont &lt;- trainControl(method=&quot;repeatedcv&quot;, number=3, verboseIter=FALSE)
+gb_fit &lt;- train(classe~., data=training, method=&quot;gbm&quot;,
+                trControl=gb_cont, verbose=FALSE)
+
+# Display final model
 gb_fit$finalModel</code></pre>
 <pre><code>## A gradient boosted model with multinomial loss function.
 ## 150 iterations were performed.
@@ -1628,17 +1640,23 @@ gb_fit$finalModel</code></pre>
 <div id="in-sample-error-1" class="section level3">
 <h3>In Sample Error</h3>
 <p>Let’s check the accuracy of the model using the data that it was trained with.</p>
-<pre class="r"><code>gb_train_pred &lt;- predict(gb_fit, training)
+<pre class="r"><code># Run predictions on training dataest
+gb_train_pred &lt;- predict(gb_fit, training)
+
+# Assess accuracy of predictions
 gb_train_accuracy &lt;- confusionMatrix(training$classe, gb_train_pred)$overall[1]
 gb_train_accuracy</code></pre>
 <pre><code>##  Accuracy 
 ## 0.9736478</code></pre>
-<p>Our accuracy with the training data is 97.36%, so this model has 2.64%</p>
+<p>Our accuracy using the training data is 97.36%, so this model has 2.64%</p>
 </div>
 <div id="out-of-sample-error-1" class="section level3">
 <h3>Out of Sample Error</h3>
 <p>Now we can check the accuracy of the model using new data.</p>
-<pre class="r"><code>gb_test_pred &lt;- predict(gb_fit, testing)
+<pre class="r"><code># Run predictions on testing data set
+gb_test_pred &lt;- predict(gb_fit, testing)
+
+# Assess accuracy of predictions
 gb_test_accuracy &lt;- confusionMatrix(testing$classe, gb_test_pred)$overall[1]
 gb_test_accuracy</code></pre>
 <pre><code>##  Accuracy 
@@ -1661,7 +1679,7 @@ gb_test_accuracy</code></pre>
 <tr class="odd">
 <td>Random Forest</td>
 <td>0</td>
-<td>0.0057774</td>
+<td>0.0059473</td>
 </tr>
 <tr class="even">
 <td>Boosting</td>
@@ -1671,11 +1689,6 @@ gb_test_accuracy</code></pre>
 </tbody>
 </table>
 <p>I chose to use the random forest model to predict the quiz answers because it has a smaller out of sample error.</p>
-<pre class="r"><code># Find quiz answers
-quiz_answers &lt;- predict(rf_fit, quiz_data)
-quiz_answers</code></pre>
-<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
-## Levels: A B C D E</code></pre>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
